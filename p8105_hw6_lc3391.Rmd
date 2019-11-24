@@ -1,0 +1,64 @@
+---
+title: "p8105_hw6_lc3391"
+author: "Lu Chen"
+date: "11/24/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(broom)
+
+```
+# Problem 1
+```{r, message=FALSE}
+#importing and cleaning data
+birthwgt = read_csv("./data/birthweight.csv", na="") %>% 
+  mutate(
+    babysex = factor(babysex),
+    frace = factor(frace),
+    mrace = factor(mrace),
+    malform = factor(malform)
+  )
+
+is.na(birthwgt) #there is no missing value in the dataset
+
+#build a model A
+fit = lm(bwt ~ babysex + delwt + fincome + gaweeks + smoken, data = birthwgt)
+# after scanning variables in the dataset, I think the sex of baby, mother's smoking status and amount during pregancy, mother's weight at delivery, baby's gestational age in weeks could all affect the birthweight of newborn.
+
+fit %>% broom::tidy()
+
+  birthwgt %>% 
+  modelr::add_residuals(fit) %>% 
+  modelr::add_predictions(fit) %>% 
+  ggplot(aes(x = resid, y = pred)) + 
+  geom_violin()
+
+# Model B
+fit2 = lm(bwt ~ blength + gaweeks, data = birthwgt) 
+
+fit2 %>% broom::tidy()
+
+birthwgt %>% 
+  modelr::add_residuals(fit2) %>% 
+  modelr::add_predictions(fit2) %>% 
+  ggplot(aes(x = resid, y = pred)) + 
+  geom_violin()
+
+# Model C
+
+fit3 = lm(bwt ~ bhead + blength + babysex + bhead*babysex + bhead*blength + blength*babysex, data = birthwgt)
+
+fit3 %>% broom::tidy()
+
+birthwgt %>% 
+  modelr::add_residuals(fit3) %>% 
+  modelr::add_predictions(fit3) %>% 
+  ggplot(aes(x = resid, y = pred)) + 
+  geom_violin()
+
+
+```
+
