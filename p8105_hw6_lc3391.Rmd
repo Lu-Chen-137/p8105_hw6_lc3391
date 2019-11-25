@@ -9,6 +9,8 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(broom)
+library(modelr)
+library(mgcv)
 
 ```
 # Problem 1
@@ -22,7 +24,7 @@ birthwgt = read_csv("./data/birthweight.csv", na="") %>%
     malform = factor(malform)
   )
 
-is.na(birthwgt) #there is no missing value in the dataset
+#is.na(birthwgt) #there is no missing value in the dataset
 
 #build a model A
 fit = lm(bwt ~ babysex + delwt + fincome + gaweeks + smoken, data = birthwgt)
@@ -49,7 +51,7 @@ birthwgt %>%
 
 # Model C
 
-fit3 = lm(bwt ~ bhead + blength + babysex + bhead*babysex + bhead*blength + blength*babysex, data = birthwgt)
+fit3 = lm(bwt ~ bhead + blength + babysex + bhead*babysex + bhead*blength + blength*babysex + bhead*blength*babysex, data = birthwgt)
 
 fit3 %>% broom::tidy()
 
@@ -59,6 +61,37 @@ birthwgt %>%
   ggplot(aes(x = resid, y = pred)) + 
   geom_violin()
 
+#making comparsion
+
+cv_birthwgt = 
+  crossv_mc(birthwgt, 100)
+
+cv_birthwgt =
+  cv_birthwgt %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_birthwgt = 
+  cv_birthwgt %>% 
+  mutate(model_a  = map(train, ~lm(bwt ~ babysex + delwt + fincome + gaweeks + smoken, data = .x)),
+         model_b  = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+         model_c  = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead*babysex + bhead*blength + blength*babysex + bhead*blength*babysex, data = .x))) %>% 
+  mutate(rmse_modela = map2_dbl(model_a, test, ~rmse(model = .x, data = .y)),
+         rmse_modelb = map2_dbl(model_b, test, ~rmse(model = .x, data = .y)),
+         rmse_modelc = map2_dbl(model_c, test, ~rmse(model = .x, data = .y)))
+
+cv_birthwgt %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+
+# from the plot, we see that the model c, with includes the head circumference, length, sex, and all interactions (including the three-way interaction) between these, fits the best (with lowest rmse value)
 
 ```
 
